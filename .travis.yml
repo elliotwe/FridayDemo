@@ -1,43 +1,29 @@
+# Travis CI Java documentation can be found in:
+# https://docs.travis-ci.com/user/languages/java/
+
+# This enables the 'defaults' to test java applications:
 language: java
 
-env:
-  - OUTPUT_DIR=target ARTIFACT_NAME=2 ARTIFACT_EXTENSION=.jar
+# We can specify a list of JDKs to be used for testing
+# A list of available JDKs in Trusty can be seed in:
+# https://docs.travis-ci.com/user/reference/xenial/#jvm-clojure-groovy-java-scala-support
+jdk: openjdk15
 
-install:
-- mvn clean install -DskipTests -Dmaven.javadoc.skip=true -B -V
+# Each job in Travis CI has several steps:
+# https://docs.travis-ci.com/user/job-lifecycle/
+# The 'language: java' directive sets up sane defaults to test common java applications
+# We use the defaults for installing dependencies, compiling and testing maven applications
+# In our case it will be 'mvn install' followed by 'mvn test'
 
-sudo: false
+# Change jobs to run Jacoco code coverage:
+# Jacoco needs  mvn clean verify to run
+jobs:
+  include:
+    - script: mvn clean verify package
 
-script:
-- mvn test -B
-
-before_deploy:
-- tar -zcf $TRAVIS_BUILD_DIR/$OUTPUT_DIR/$TRAVIS_TAG.tar.gz -C $TRAVIS_BUILD_DIR/$OUTPUT_DIR $(find $TRAVIS_BUILD_DIR/$OUTPUT_DIR/ -maxdepth 1 -name $ARTIFACT_NAME-*$ARTIFACT_EXTENSION -printf "%f\n")
-
-cache:
-  directories:
-  - $HOME/.m2
-
+# This is to enable CodeCov's coverage
+# If a build is successful, the code is submitted for coverage analysis
+# On every build, Travis CI calls the online Codecov shell script,
+# which will somehow update the code coverage value based on the JaCoCo report generated during the previous build command.
 after_success:
-- bash <(curl -s https://codecov.io/bash)
-- mvn sonar:sonar -Dsonar.projectKey=elliotwe_2 -Dsonar.organization=$SONARQUBE_ORGANIZATION -Dsonar.host.url=https://sonarcloud.io -Dsonar.login=$SONARQUBE_TOKEN
-
-deploy:
-- provider: releases
-  api_key: "$GITHUB_OAUTH_TOKEN"
-  file: "$TRAVIS_BUILD_DIR/$OUTPUT_DIR/$TRAVIS_TAG.tar.gz"
-  skip_cleanup: true
-  name: $TRAVIS_TAG
-  on:
-    tags: true
-    condition: $TRAVIS_TAG =~ ^$ARTIFACT_NAME-(([0-9]).)+([0-9]+$)
-
-- provider: releases
-  api_key: "$GITHUB_OAUTH_TOKEN"
-  file: "$TRAVIS_BUILD_DIR/$OUTPUT_DIR/$TRAVIS_TAG.tar.gz"
-  skip_cleanup: true
-  name: $TRAVIS_TAG
-  prerelease: true
-  on:
-    tags: true
-    condition: $TRAVIS_TAG =~ ^$ARTIFACT_NAME-.*(beta|alpha|pre).*$
+  - bash <(curl -s https://codecov.io/bash)
